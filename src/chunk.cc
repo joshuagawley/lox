@@ -6,7 +6,7 @@
 
 namespace {
 
-constexpr auto SimpleInstruction(std::string_view name, std::size_t offset)
+auto SimpleInstruction(std::string_view name, std::size_t offset)
     -> std::size_t {
   std::cout << name << '\n';
   return offset + 1;
