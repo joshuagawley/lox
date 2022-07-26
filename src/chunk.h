@@ -11,7 +11,16 @@
 
 namespace lox {
 
-enum class Opcode : std::uint8_t { kConstant, kConstantLong, kReturn };
+enum class Opcode : std::uint8_t {
+  kConstant,
+  kConstantLong,
+  kAdd,
+  kSubtract,
+  kMultiply,
+  kDivide,
+  kNegate,
+  kReturn
+};
 
 std::ostream &operator<<(std::ostream &os, Opcode opcode);
 
@@ -24,19 +33,21 @@ class Chunk {
   auto Write(Opcode code, std::size_t line) noexcept -> void;
   auto Write(std::uint8_t code, std::size_t line) noexcept -> void;
   auto WriteConstant(Value value, std::size_t line) noexcept -> void;
+  auto GetCodePtr() -> std::uint8_t *;
+  auto GetValueAtIndex(std::size_t index) -> Value;
+  auto DisassembleInstruction(std::size_t offset) noexcept -> std::size_t;
 
  private:
   auto ConstantInstruction(std::string_view name, std::size_t offset) noexcept
       -> std::size_t;
   auto ConstantLongInstruction(std::string_view name,
                                std::size_t offset) noexcept -> std::size_t;
-  auto DisassembleInstruction(std::size_t offset) noexcept -> std::size_t;
 
   std::vector<std::uint8_t> code_;
   std::vector<std::size_t> lines_;
   std::vector<Value> constants_;
 };
 
-} // namespace lox
+}  // namespace lox
 
 #endif  // LOX_SRC_CHUNK_H

@@ -54,6 +54,12 @@ auto Chunk::WriteConstant(Value value, std::size_t line) noexcept -> void {
   }
 }
 
+auto Chunk::GetCodePtr() -> std::uint8_t * { return &code_[0]; }
+
+auto Chunk::GetValueAtIndex(std::size_t index) -> Value {
+  return constants_[index];
+}
+
 auto Chunk::ConstantInstruction(std::string_view name,
                                 std::size_t offset) noexcept -> std::size_t {
   auto constant = code_[offset + 1];
@@ -87,6 +93,16 @@ auto Chunk::DisassembleInstruction(std::size_t offset) noexcept -> std::size_t {
       return ConstantInstruction("OP_CONSTANT", offset);
     case Opcode::kConstantLong:
       return ConstantLongInstruction("OP_CONSTANT_LONG", offset);
+    case Opcode::kAdd:
+      return SimpleInstruction("OP_ADD", offset);
+    case Opcode::kSubtract:
+      return SimpleInstruction("OP_SUBTRACT", offset);
+    case Opcode::kMultiply:
+      return SimpleInstruction("OP_MULTIPLY", offset);
+    case Opcode::kDivide:
+      return SimpleInstruction("OP_DIVIDE", offset);
+    case Opcode::kNegate:
+      return SimpleInstruction("OP_NEGATE", offset);
     case Opcode::kReturn:
       return SimpleInstruction("OP_RETURN", offset);
     default:
