@@ -170,6 +170,7 @@ auto Scanner::FindIdentifierType() -> TokenType {
     case 'w':
       return CheckKeyword(1, 4, "hile", TokenType::kWhile);
   }
+  return TokenType::kIdentifier;
 }
 
 auto Scanner::HandleIdentifier() -> Token {
