@@ -10,7 +10,7 @@ namespace lox {
 auto VirtualMachine::PushValue(Value value) { temps_.push_back(value); }
 
 auto VirtualMachine::PopValue() -> Value {
-  auto result = *temps_.end();
+  auto result = *(temps_.end() - 1);
   temps_.pop_back();
   return result;
 }
@@ -76,8 +76,16 @@ auto VirtualMachine::Run() -> InterpretResult {
 #undef READ_CONSTANT
 }
 auto VirtualMachine::Interpret(std::string_view source) -> InterpretResult {
-  compiler_.Compile(source);
-  return InterpretResult::kOk;
+  auto chunk = Chunk{};
+
+  if (!compiler_.Compile(source, &chunk)) return InterpretResult::kCompileError;
+
+  chunk_ = &chunk;
+  ip_ = chunk_->GetCodePtr();
+
+  auto result = Run();
+  chunk_ = nullptr;
+  return result;
 }
 
 }  // namespace lox

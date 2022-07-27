@@ -13,11 +13,11 @@ class Scanner {
  public:
   auto operator()(std::string_view source) noexcept -> void;
 
+  auto Advance() -> char;
   auto ScanToken() -> Token;
 
  private:
   auto IsAtEnd() -> bool;
-  auto Advance() -> char;
   auto Peek() -> char;
   auto PeekNext() -> char;
   auto Match(char expected) -> bool;
