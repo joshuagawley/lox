@@ -3,13 +3,19 @@ project(lox VERSION 0.0.0 LANGUAGES CXX)
 
 set(LOX_SOURCES
         src/chunk.cc
+        src/compiler.cc
+        src/scanner.cc
         src/main.cc
+        src/token.cc
         src/vm.cc
         )
 
 set(LOX_HEADERS
         src/chunk.h
+        src/compiler.h
+        src/scanner.h
         src/value.h
+        src/token.h
         src/vm.h
         )
 
