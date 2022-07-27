@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "chunk.h"
+#include "compiler.h"
 
 namespace lox {
 
@@ -18,7 +19,7 @@ class VirtualMachine {
   VirtualMachine() = default;
   ~VirtualMachine() = default;
 
-  auto Interpret(Chunk *chunk) -> InterpretResult;
+  auto Interpret(std::string_view source) -> InterpretResult;
   auto PushValue(Value value);
   auto PopValue() -> Value;
 
@@ -28,6 +29,7 @@ class VirtualMachine {
   Chunk *chunk_ = nullptr;
   std::uint8_t *ip_ = nullptr;
   std::vector<Value> temps_;
+  Compiler compiler_;
 };
 
 }  // namespace lox

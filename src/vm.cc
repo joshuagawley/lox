@@ -7,12 +7,6 @@
 
 namespace lox {
 
-auto VirtualMachine::Interpret(Chunk *chunk) -> InterpretResult {
-  chunk_ = chunk;
-  ip_ = chunk_->GetCodePtr();
-  return Run();
-}
-
 auto VirtualMachine::PushValue(Value value) { temps_.push_back(value); }
 
 auto VirtualMachine::PopValue() -> Value {
@@ -80,6 +74,10 @@ auto VirtualMachine::Run() -> InterpretResult {
   }
 #undef READ_BYTE
 #undef READ_CONSTANT
+}
+auto VirtualMachine::Interpret(std::string_view source) -> InterpretResult {
+  compiler_.Compile(source);
+  return InterpretResult::kOk;
 }
 
 }  // namespace lox
