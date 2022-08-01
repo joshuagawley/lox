@@ -4,6 +4,11 @@ project(lox VERSION 0.0.0 LANGUAGES CXX)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
+set(CMAKE_CXX_CLANG_TIDY
+        clang-tidy;
+        -header-filter=.;
+        -checks=*;)
+
 set(LOX_SOURCES
         src/chunk.cc
         src/compiler.cc
