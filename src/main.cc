@@ -2,6 +2,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <string>
 
 #include "chunk.h"
 #include "vm.h"
@@ -25,7 +26,7 @@ std::string ReadFile(std::string_view path) {
 }
 
 void Repl() {
-  auto vm = lox::VirtualMachine{};
+  auto vm = VirtualMachine{};
   auto line = std::string{};
 
   while (std::cout << "> " && std::getline(std::cin, line)) {

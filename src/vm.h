@@ -17,7 +17,6 @@ enum class InterpretResult { kOk, kCompileError, kRuntimeError };
 class VirtualMachine {
  public:
   VirtualMachine() = default;
-  ~VirtualMachine() = default;
 
   InterpretResult Interpret(std::string_view source);
   void PushValue(Value value);
@@ -29,7 +28,6 @@ class VirtualMachine {
   Chunk *chunk_ = nullptr;
   std::uint8_t *ip_ = nullptr;
   std::vector<Value> temps_;
-  Compiler compiler_;
 };
 
 }  // namespace lox

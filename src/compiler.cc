@@ -2,9 +2,9 @@
 
 #include "compiler.h"
 
-#define DEBUG_PRINT_CODE true
-
 #include <iostream>
+
+#define DEBUG_PRINT_CODE
 
 namespace {
 
@@ -15,29 +15,18 @@ constexpr auto kNoParseRule =
 
 namespace lox {
 
-bool Compiler::Compile(std::string_view source, Chunk *chunk) {
-  scanner_(source);
-  current_ = scanner_.ScanToken();
+Compiler::Compiler(std::string_view source) : parser_(source) {}
+
+bool Compiler::Compile(Chunk *chunk) {
   compiling_chunk_ = chunk;
   Expression();
-  Consume(TokenType::kEof, "Expected end of expression");
+  parser_.Consume(TokenType::kEof, "Expected end of expression");
   StopCompiling();
-  return !had_error_;
-}
-
-void Compiler::Advance() {
-  previous_ = current_.value();
-
-  while (true) {
-    current_ = scanner_.ScanToken();
-    if (current_.value().type != TokenType::kError) break;
-
-    ErrorAtCurrent(current_.value().lexeme);
-  }
+  return !parser_.had_error();
 }
 
 void Compiler::Binary() {
-  auto operator_type = previous_.value().type;
+  auto operator_type = parser_.get_previous().type;
   auto rule = GetParseRule(operator_type);
   ParsePrecedence(
       static_cast<Precedence>(static_cast<int>(rule.precedence) + 1));
@@ -60,21 +49,12 @@ void Compiler::Binary() {
   }
 }
 
-void Compiler::Consume(TokenType type, std::string_view message) {
-  if (current_.value().type == type) {
-    Advance();
-    return;
-  }
-
-  ErrorAtCurrent(message);
-}
-
 void Compiler::EmitByte(std::uint8_t byte) {
-  GetCurrentChunk()->Write(byte, previous_.value().line);
+  GetCurrentChunk()->Write(byte, parser_.get_previous().line);
 }
 
 void Compiler::EmitByte(Opcode code) {
-  GetCurrentChunk()->Write(code, previous_.value().line);
+  GetCurrentChunk()->Write(code, parser_.get_previous().line);
 }
 
 void Compiler::EmitBytes(std::initializer_list<std::uint8_t> bytes) {
@@ -90,30 +70,6 @@ void Compiler::EmitBytes(std::initializer_list<Opcode> codes) {
 }
 
 void Compiler::EmitReturn() { EmitByte(Opcode::kReturn); }
-
-void Compiler::ErrorAt(const Token &token, std::string_view message) {
-  if (panic_mode_) return;
-  panic_mode_ = true;
-  std::cerr << "[line " << token.line << " Error";
-
-  if (token.type == lox::TokenType::kEof) {
-    std::cerr << " at end";
-  } else if (token.type == lox::TokenType::kError) {
-  } else {
-    std::cerr << " at '" << token.lexeme << "'";
-  }
-
-  std::cerr << ": " << message << '\n';
-  had_error_ = true;
-}
-
-void Compiler::Error(std::string_view message) {
-  ErrorAt(previous_.value(), message);
-}
-
-void Compiler::ErrorAtCurrent(std::string_view message) {
-  ErrorAt(current_.value(), message);
-}
 
 void Compiler::Expression() { ParsePrecedence(Precedence::kAssignment); }
 
@@ -139,27 +95,27 @@ constexpr ParseRule Compiler::GetParseRule(TokenType type) {
 
 void Compiler::Grouping() {
   Expression();
-  Consume(TokenType::kRightParen, "Expected ')' after expression");
+  parser_.Consume(TokenType::kRightParen, "Expected ')' after expression");
 }
 
 void Compiler::Number() {
-  auto value = std::stod(previous_.value().lexeme.data());
-  GetCurrentChunk()->WriteConstant(value, previous_.value().line);
+  auto value = std::stod(parser_.get_previous().lexeme.data());
+  GetCurrentChunk()->WriteConstant(value, parser_.get_previous().line);
 }
 
 void Compiler::ParsePrecedence(Precedence precedence) {
-  Advance();
-  auto prefixRule = GetParseRule(previous_.value().type).prefix_func;
+  parser_.Advance();
+  auto prefixRule = GetParseRule(parser_.get_previous().type).prefix_func;
   if (prefixRule == nullptr) {
-    Error("Expected expression.");
+    parser_.ErrorAtPrevious("Expected expression.");
     return;
   }
 
   (this->*prefixRule)();
 
-  while (precedence <= GetParseRule(current_.value().type).precedence) {
-    Advance();
-    auto infix_rule = GetParseRule(previous_.value().type).infix_func;
+  while (precedence <= GetParseRule(parser_.get_current().type).precedence) {
+    parser_.Advance();
+    auto infix_rule = GetParseRule(parser_.get_previous().type).infix_func;
     (this->*infix_rule)();
   }
 }
@@ -167,14 +123,14 @@ void Compiler::ParsePrecedence(Precedence precedence) {
 void Compiler::StopCompiling() {
   EmitReturn();
 #ifdef DEBUG_PRINT_CODE
-  if (!had_error_) {
+  if (!parser_.had_error()) {
     GetCurrentChunk()->Disassemble("code");
   }
 #endif
 }
 
 void Compiler::Unary() {
-  auto operator_type = previous_.value().type;
+  auto operator_type = parser_.get_previous().type;
 
   // Compile the operand
   ParsePrecedence(Precedence::kUnary);

@@ -11,7 +11,7 @@ namespace lox {
 
 class Scanner {
  public:
-  void operator()(std::string_view source) noexcept;
+  explicit Scanner(std::string_view source);
 
   char Advance();
   Token ScanToken();

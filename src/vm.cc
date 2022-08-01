@@ -77,9 +77,10 @@ InterpretResult VirtualMachine::Run() {
 }
 
 InterpretResult VirtualMachine::Interpret(std::string_view source) {
+  auto compiler = Compiler{source};
   auto chunk = Chunk{};
 
-  if (!compiler_.Compile(source, &chunk)) return InterpretResult::kCompileError;
+  if (!compiler.Compile(&chunk)) return InterpretResult::kCompileError;
 
   chunk_ = &chunk;
   ip_ = chunk_->GetCodePtr();

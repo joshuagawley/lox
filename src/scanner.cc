@@ -9,12 +9,10 @@
 
 namespace lox {
 
-void Scanner::operator()(std::string_view source) noexcept {
-  start_ = &source[0];
-  current_ = &source[0];
-}
+Scanner::Scanner(std::string_view source)
+    : start_{&source[0]}, current_{&source[0]} {}
 
-auto Scanner::ScanToken() -> Token {
+Token Scanner::ScanToken() {
   SkipWhitespace();
   start_ = current_;
 
@@ -86,12 +84,11 @@ bool Scanner::Match(const char expected) {
 }
 
 Token Scanner::MakeToken(TokenType type) {
-  return Token{type, start_, static_cast<std::size_t>(current_ - start_),
-               line_};
+  return {type, start_, static_cast<std::size_t>(current_ - start_), line_};
 }
 
 Token Scanner::MakeErrorToken(std::string_view message) const {
-  return Token{TokenType::kError, message, line_};
+  return {TokenType::kError, message, line_};
 }
 
 void Scanner::SkipWhitespace() {
@@ -113,8 +110,8 @@ void Scanner::SkipWhitespace() {
   }
 }
 
-auto Scanner::CheckKeyword(std::size_t start, std::size_t length,
-                           const char *rest, TokenType type) -> TokenType {
+TokenType Scanner::CheckKeyword(std::size_t start, std::size_t length,
+                                const char *rest, TokenType type) {
   if (static_cast<std::size_t>(current_ - start_) == start + length &&
       std::memcmp(start_ + start, rest, length) == 0) {
     return type;
@@ -122,7 +119,7 @@ auto Scanner::CheckKeyword(std::size_t start, std::size_t length,
   return TokenType::kIdentifier;
 }
 
-auto Scanner::FindIdentifierType() -> TokenType {
+TokenType Scanner::FindIdentifierType() {
   switch (start_[0]) {
     case 'a':
       return CheckKeyword(1, 2, "nd", TokenType::kAnd);

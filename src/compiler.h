@@ -8,6 +8,7 @@
 #include <string_view>
 
 #include "chunk.h"
+#include "parser.h"
 #include "scanner.h"
 
 namespace lox {
@@ -38,20 +39,16 @@ struct ParseRule {
 
 class Compiler {
  public:
-  bool Compile(std::string_view source, Chunk *chunk);
+  explicit Compiler(std::string_view source);
+  bool Compile(Chunk *chunk);
 
  private:
-  void Advance();
   void Binary();
-  void Consume(TokenType type, std::string_view message);
   void EmitByte(std::uint8_t byte);
   void EmitByte(Opcode code);
   void EmitBytes(std::initializer_list<std::uint8_t> bytes);
   void EmitBytes(std::initializer_list<Opcode> codes);
   void EmitReturn();
-  void ErrorAt(const Token &token, std::string_view message);
-  void ErrorAtCurrent(std::string_view message);
-  void Error(std::string_view message);
   void Expression();
   Chunk *GetCurrentChunk();
   static constexpr ParseRule GetParseRule(TokenType type);
@@ -62,11 +59,7 @@ class Compiler {
   void Unary();
 
   Chunk *compiling_chunk_ = nullptr;
-  std::optional<Token> current_;
-  std::optional<Token> previous_;
-  bool had_error_ = false;
-  bool panic_mode_ = false;
-  Scanner scanner_;
+  Parser parser_;
 };
 
 }  // namespace lox
