@@ -29,19 +29,19 @@ class Chunk {
   Chunk() noexcept = default;
   ~Chunk() noexcept = default;
 
-  auto Disassemble(std::string_view name) noexcept -> void;
-  auto Write(Opcode code, std::size_t line) noexcept -> void;
-  auto Write(std::uint8_t code, std::size_t line) noexcept -> void;
-  auto WriteConstant(Value value, std::size_t line) noexcept -> void;
-  auto GetCodePtr() -> std::uint8_t *;
-  auto GetValueAtIndex(std::size_t index) -> Value;
-  auto DisassembleInstruction(std::size_t offset) noexcept -> std::size_t;
+  void Disassemble(std::string_view name) noexcept;
+  void Write(Opcode code, std::size_t line) noexcept;
+  void Write(std::uint8_t code, std::size_t line) noexcept;
+  void WriteConstant(Value value, std::size_t line) noexcept;
+  std::uint8_t *GetCodePtr();
+  Value GetValueAtIndex(std::size_t index);
+  std::size_t DisassembleInstruction(std::size_t offset) noexcept;
 
  private:
-  auto ConstantInstruction(std::string_view name, std::size_t offset) noexcept
-      -> std::size_t;
-  auto ConstantLongInstruction(std::string_view name,
-                               std::size_t offset) noexcept -> std::size_t;
+  std::size_t ConstantInstruction(std::string_view name,
+                                  std::size_t offset) noexcept;
+  std::size_t ConstantLongInstruction(std::string_view name,
+                                      std::size_t offset) noexcept;
 
   std::vector<std::uint8_t> code_;
   std::vector<std::size_t> lines_;

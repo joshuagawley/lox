@@ -15,7 +15,7 @@ constexpr auto kNoParseRule =
 
 namespace lox {
 
-auto Compiler::Compile(std::string_view source, Chunk *chunk) -> bool {
+bool Compiler::Compile(std::string_view source, Chunk *chunk) {
   scanner_(source);
   current_ = scanner_.ScanToken();
   compiling_chunk_ = chunk;
@@ -25,7 +25,7 @@ auto Compiler::Compile(std::string_view source, Chunk *chunk) -> bool {
   return !had_error_;
 }
 
-auto Compiler::Advance() -> void {
+void Compiler::Advance() {
   previous_ = current_.value();
 
   while (true) {
@@ -36,7 +36,7 @@ auto Compiler::Advance() -> void {
   }
 }
 
-auto Compiler::Binary() -> void {
+void Compiler::Binary() {
   auto operator_type = previous_.value().type;
   auto rule = GetParseRule(operator_type);
   ParsePrecedence(
@@ -60,7 +60,7 @@ auto Compiler::Binary() -> void {
   }
 }
 
-auto Compiler::Consume(TokenType type, std::string_view message) -> void {
+void Compiler::Consume(TokenType type, std::string_view message) {
   if (current_.value().type == type) {
     Advance();
     return;
@@ -69,29 +69,29 @@ auto Compiler::Consume(TokenType type, std::string_view message) -> void {
   ErrorAtCurrent(message);
 }
 
-auto Compiler::EmitByte(std::uint8_t byte) -> void {
+void Compiler::EmitByte(std::uint8_t byte) {
   GetCurrentChunk()->Write(byte, previous_.value().line);
 }
 
-auto Compiler::EmitByte(Opcode code) -> void {
+void Compiler::EmitByte(Opcode code) {
   GetCurrentChunk()->Write(code, previous_.value().line);
 }
 
-auto Compiler::EmitBytes(std::initializer_list<std::uint8_t> bytes) -> void {
+void Compiler::EmitBytes(std::initializer_list<std::uint8_t> bytes) {
   for (auto byte : bytes) {
     EmitByte(byte);
   }
 }
 
-auto Compiler::EmitBytes(std::initializer_list<Opcode> codes) -> void {
+void Compiler::EmitBytes(std::initializer_list<Opcode> codes) {
   for (auto code : codes) {
     EmitByte(code);
   }
 }
 
-auto Compiler::EmitReturn() -> void { EmitByte(Opcode::kReturn); }
+void Compiler::EmitReturn() { EmitByte(Opcode::kReturn); }
 
-auto Compiler::ErrorAt(const Token &token, std::string_view message) -> void {
+void Compiler::ErrorAt(const Token &token, std::string_view message) {
   if (panic_mode_) return;
   panic_mode_ = true;
   std::cerr << "[line " << token.line << " Error";
@@ -107,21 +107,19 @@ auto Compiler::ErrorAt(const Token &token, std::string_view message) -> void {
   had_error_ = true;
 }
 
-auto Compiler::Error(std::string_view message) -> void {
+void Compiler::Error(std::string_view message) {
   ErrorAt(previous_.value(), message);
 }
 
-auto Compiler::ErrorAtCurrent(std::string_view message) -> void {
+void Compiler::ErrorAtCurrent(std::string_view message) {
   ErrorAt(current_.value(), message);
 }
 
-auto Compiler::Expression() -> void {
-  ParsePrecedence(Precedence::kAssignment);
-}
+void Compiler::Expression() { ParsePrecedence(Precedence::kAssignment); }
 
-auto Compiler::GetCurrentChunk() -> Chunk * { return compiling_chunk_; }
+Chunk *Compiler::GetCurrentChunk() { return compiling_chunk_; }
 
-constexpr auto Compiler::GetParseRule(TokenType type) -> ParseRule {
+constexpr ParseRule Compiler::GetParseRule(TokenType type) {
   switch (type) {
     case TokenType::kLeftParen:
       return {&Compiler::Grouping, nullptr, Precedence::kNone};
@@ -139,17 +137,17 @@ constexpr auto Compiler::GetParseRule(TokenType type) -> ParseRule {
   }
 }
 
-auto Compiler::Grouping() -> void {
+void Compiler::Grouping() {
   Expression();
   Consume(TokenType::kRightParen, "Expected ')' after expression");
 }
 
-auto Compiler::Number() -> void {
+void Compiler::Number() {
   auto value = std::stod(previous_.value().lexeme.data());
   GetCurrentChunk()->WriteConstant(value, previous_.value().line);
 }
 
-auto Compiler::ParsePrecedence(Precedence precedence) -> void {
+void Compiler::ParsePrecedence(Precedence precedence) {
   Advance();
   auto prefixRule = GetParseRule(previous_.value().type).prefix_func;
   if (prefixRule == nullptr) {
@@ -166,7 +164,7 @@ auto Compiler::ParsePrecedence(Precedence precedence) -> void {
   }
 }
 
-auto Compiler::StopCompiling() -> void {
+void Compiler::StopCompiling() {
   EmitReturn();
 #ifdef DEBUG_PRINT_CODE
   if (!had_error_) {
@@ -175,7 +173,7 @@ auto Compiler::StopCompiling() -> void {
 #endif
 }
 
-auto Compiler::Unary() -> void {
+void Compiler::Unary() {
   auto operator_type = previous_.value().type;
 
   // Compile the operand

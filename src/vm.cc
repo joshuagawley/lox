@@ -7,15 +7,15 @@
 
 namespace lox {
 
-auto VirtualMachine::PushValue(Value value) { temps_.push_back(value); }
+void VirtualMachine::PushValue(Value value) { temps_.push_back(value); }
 
-auto VirtualMachine::PopValue() -> Value {
-  auto result = *(temps_.end() - 1);
+Value VirtualMachine::PopValue() {
+  Value result = *(temps_.end() - 1);
   temps_.pop_back();
   return result;
 }
 
-auto VirtualMachine::Run() -> InterpretResult {
+InterpretResult VirtualMachine::Run() {
 #define READ_BYTE() (*ip_++)
 #define READ_CONSTANT() (chunk_->GetValueAtIndex(READ_BYTE()))
 #define BINARY_OP(op)      \
@@ -28,7 +28,7 @@ auto VirtualMachine::Run() -> InterpretResult {
   while (true) {
 #if DEBUG_TRACE_EXECUTION
     std::cout << "          ";
-    for (auto slot : temps_) {
+    for (auto &slot : temps_) {
       std::cout << "[ " << slot << " ]";
     }
     std::cout << '\n';
@@ -75,7 +75,8 @@ auto VirtualMachine::Run() -> InterpretResult {
 #undef READ_BYTE
 #undef READ_CONSTANT
 }
-auto VirtualMachine::Interpret(std::string_view source) -> InterpretResult {
+
+InterpretResult VirtualMachine::Interpret(std::string_view source) {
   auto chunk = Chunk{};
 
   if (!compiler_.Compile(source, &chunk)) return InterpretResult::kCompileError;
@@ -83,7 +84,7 @@ auto VirtualMachine::Interpret(std::string_view source) -> InterpretResult {
   chunk_ = &chunk;
   ip_ = chunk_->GetCodePtr();
 
-  auto result = Run();
+  InterpretResult result = Run();
   chunk_ = nullptr;
   return result;
 }

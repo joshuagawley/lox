@@ -11,25 +11,25 @@ namespace lox {
 
 class Scanner {
  public:
-  auto operator()(std::string_view source) noexcept -> void;
+  void operator()(std::string_view source) noexcept;
 
-  auto Advance() -> char;
-  auto ScanToken() -> Token;
+  char Advance();
+  Token ScanToken();
 
  private:
-  auto IsAtEnd() -> bool;
-  auto Peek() -> char;
-  auto PeekNext() -> char;
-  auto Match(char expected) -> bool;
-  auto MakeToken(TokenType type) -> Token;
-  [[nodiscard]] auto MakeErrorToken(std::string_view message) const -> Token;
-  auto SkipWhitespace() -> void;
-  auto CheckKeyword(std::size_t start, std::size_t length, const char *rest,
-                    TokenType type) -> TokenType;
-  auto FindIdentifierType() -> TokenType;
-  auto HandleIdentifier() -> Token;
-  auto HandleNumber() -> Token;
-  auto HandleString() -> Token;
+  bool IsAtEnd();
+  char Peek();
+  char PeekNext();
+  bool Match(char expected);
+  Token MakeToken(TokenType type);
+  [[nodiscard]] Token MakeErrorToken(std::string_view message) const;
+  void SkipWhitespace();
+  TokenType CheckKeyword(std::size_t start, std::size_t length,
+                         const char *rest, TokenType type);
+  TokenType FindIdentifierType();
+  Token HandleIdentifier();
+  Token HandleNumber();
+  Token HandleString();
 
   const char *start_ = nullptr;
   const char *current_ = nullptr;

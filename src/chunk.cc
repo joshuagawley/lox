@@ -6,8 +6,7 @@
 
 namespace {
 
-auto SimpleInstruction(std::string_view name, std::size_t offset)
-    -> std::size_t {
+std::size_t SimpleInstruction(std::string_view name, std::size_t offset) {
   std::cout << name << '\n';
   return offset + 1;
 }
@@ -21,17 +20,17 @@ std::ostream &operator<<(std::ostream &os, Opcode opcode) {
   return os;
 }
 
-auto Chunk::Write(std::uint8_t code, std::size_t line) noexcept -> void {
+void Chunk::Write(std::uint8_t code, std::size_t line) noexcept {
   code_.push_back(code);
   lines_.push_back(line);
 }
 
-auto Chunk::Write(Opcode code, std::size_t line) noexcept -> void {
+void Chunk::Write(Opcode code, std::size_t line) noexcept {
   code_.push_back(static_cast<std::uint8_t>(code));
   lines_.push_back(line);
 }
 
-auto Chunk::Disassemble(std::string_view name) noexcept -> void {
+void Chunk::Disassemble(std::string_view name) noexcept {
   std::cout << "== " << name << " ==\n";
 
   auto offset = std::size_t{0};
@@ -40,9 +39,9 @@ auto Chunk::Disassemble(std::string_view name) noexcept -> void {
   }
 }
 
-auto Chunk::WriteConstant(Value value, std::size_t line) noexcept -> void {
+void Chunk::WriteConstant(Value value, std::size_t line) noexcept {
   constants_.push_back(value);
-  auto index = constants_.size() - 1;
+  std::size_t index = constants_.size() - 1;
   if (index < 255) {
     Write(Opcode::kConstant, line);
     Write(constants_.size() - 1, line);
@@ -54,23 +53,20 @@ auto Chunk::WriteConstant(Value value, std::size_t line) noexcept -> void {
   }
 }
 
-auto Chunk::GetCodePtr() -> std::uint8_t * { return &code_[0]; }
+std::uint8_t *Chunk::GetCodePtr() { return &code_[0]; }
 
-auto Chunk::GetValueAtIndex(std::size_t index) -> Value {
-  return constants_[index];
-}
+Value Chunk::GetValueAtIndex(std::size_t index) { return constants_[index]; }
 
-auto Chunk::ConstantInstruction(std::string_view name,
-                                std::size_t offset) noexcept -> std::size_t {
-  auto constant = code_[offset + 1];
+std::size_t Chunk::ConstantInstruction(std::string_view name,
+                                       std::size_t offset) noexcept {
+  std::uint8_t constant = code_[offset + 1];
   std::printf("%-16s %4d '", name.data(), constant);
   std::cout << constants_[constant] << "'\n";
   return offset + 2;
 }
 
-auto Chunk::ConstantLongInstruction(std::string_view name,
-                                    std::size_t offset) noexcept
-    -> std::size_t {
+std::size_t Chunk::ConstantLongInstruction(std::string_view name,
+                                           std::size_t offset) noexcept {
   auto constant =
       (code_[offset + 1] << 16) | (code_[offset + 2] << 8) | code_[offset + 3];
   std::printf("%-16s %4d '", name.data(), constant);
@@ -78,7 +74,7 @@ auto Chunk::ConstantLongInstruction(std::string_view name,
   return offset + 4;
 }
 
-auto Chunk::DisassembleInstruction(std::size_t offset) noexcept -> std::size_t {
+std::size_t Chunk::DisassembleInstruction(std::size_t offset) noexcept {
   std::printf("%04lu ", offset);
 
   if (offset > 0 && lines_[offset] == lines_[offset - 1]) {

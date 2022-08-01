@@ -10,7 +10,7 @@ namespace lox {
 
 // From
 // https://stackoverflow.com/questions/116038/how-do-i-read-an-entire-file-into-a-stdstring-in-c
-auto ReadFile(std::string_view path) -> std::string {
+std::string ReadFile(std::string_view path) {
   constexpr auto read_size = std::size_t{4096};
   auto stream = std::ifstream{path.data()};
   stream.exceptions(std::ios::badbit);
@@ -24,7 +24,7 @@ auto ReadFile(std::string_view path) -> std::string {
   return result;
 }
 
-auto Repl() -> void {
+void Repl() {
   auto vm = lox::VirtualMachine{};
   auto line = std::string{};
 
@@ -34,10 +34,10 @@ auto Repl() -> void {
   std::cout << '\n';
 }
 
-auto RunFile(std::string_view path) -> void {
+void RunFile(std::string_view path) {
   auto vm = VirtualMachine{};
-  auto source = ReadFile(path);
-  auto result = vm.Interpret(source);
+  std::string source = ReadFile(path);
+  InterpretResult result = vm.Interpret(source);
 
   if (result == InterpretResult::kCompileError) {
     std::exit(65);

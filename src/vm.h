@@ -19,12 +19,12 @@ class VirtualMachine {
   VirtualMachine() = default;
   ~VirtualMachine() = default;
 
-  auto Interpret(std::string_view source) -> InterpretResult;
-  auto PushValue(Value value);
-  auto PopValue() -> Value;
+  InterpretResult Interpret(std::string_view source);
+  void PushValue(Value value);
+  Value PopValue();
 
  private:
-  auto Run() -> InterpretResult;
+  InterpretResult Run();
 
   Chunk *chunk_ = nullptr;
   std::uint8_t *ip_ = nullptr;
