@@ -6,10 +6,7 @@
 
 namespace lox {
 
-Parser::Parser(std::string_view source)
-    : current_(TokenType::kEof, source, 0),
-      previous_(TokenType::kEof, source, 0),
-      scanner_(source) {
+Parser::Parser(std::string_view source) : scanner_(source) {
   Advance();
 }
 
