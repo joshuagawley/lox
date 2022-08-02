@@ -16,8 +16,8 @@ class Parser {
 
   void Advance();
   void Consume(TokenType type, std::string_view message);
-  Token &get_current();
-  Token &get_previous();
+  [[nodiscard]] const Token &get_current() const;
+  [[nodiscard]] const Token &get_previous() const;
   [[nodiscard]] bool had_error() const;
 
   void ErrorAtCurrent(std::string_view message);

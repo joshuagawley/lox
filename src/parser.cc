@@ -6,9 +6,7 @@
 
 namespace lox {
 
-Parser::Parser(std::string_view source) : scanner_(source) {
-  Advance();
-}
+Parser::Parser(std::string_view source) : scanner_(source) { Advance(); }
 
 void Parser::Advance() {
   previous_ = current_;
@@ -29,9 +27,9 @@ void Parser::Consume(TokenType type, std::string_view message) {
   }
 }
 
-Token &Parser::get_current() { return current_; }
+const Token &Parser::get_current() const { return current_; }
 
-Token &Parser::get_previous() { return previous_; }
+const Token &Parser::get_previous() const { return previous_; }
 
 bool Parser::had_error() const { return had_error_; }
 

@@ -38,9 +38,10 @@ enum class TokenType {
 
 struct Token {
   Token() = default;
-  Token(TokenType type, const char *start, std::size_t length,
-        std::size_t line);
-  Token(TokenType type, std::string_view lexeme, std::size_t line);
+  Token(TokenType type, const char *start, std::size_t length, std::size_t line)
+      : type(type), lexeme(start, length), line(line){};
+  Token(TokenType type, std::string_view lexeme, std::size_t line)
+      : type(type), lexeme(lexeme), line(line){};
 
   TokenType type{TokenType::kEof};
   std::string_view lexeme{};

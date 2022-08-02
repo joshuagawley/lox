@@ -16,7 +16,6 @@ set(LOX_SOURCES
         src/main.cc
         src/parser.cc
         src/scanner.cc
-        src/token.cc
         src/vm.cc
         )
 
@@ -25,13 +24,14 @@ set(LOX_HEADERS
         src/compiler.h
         src/parser.h
         src/scanner.h
-        src/value.h
         src/token.h
+        src/value.h
         src/vm.h
         )
 
 add_executable(lox ${LOX_SOURCES} ${LOX_HEADERS})
 target_compile_features(lox PRIVATE cxx_std_17)
+target_compile_options(lox PRIVATE -Wall -Wextra -pedantic-errors -Wconversion -Wsign-conversion)
 set_target_properties(lox PROPERTIES
         CXX_STANDARD_REQUIRED ON
         CXX_EXTENSIONS OFF)

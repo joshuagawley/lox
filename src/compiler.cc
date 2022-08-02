@@ -32,6 +32,24 @@ void Compiler::Binary() {
       static_cast<Precedence>(static_cast<int>(rule.precedence) + 1));
 
   switch (operator_type) {
+    case TokenType::kBangEqual:
+      EmitByte(Opcode::kNotEqual);
+      break;
+    case TokenType::kEqualEqual:
+      EmitByte(Opcode::kEqual);
+      break;
+    case TokenType::kGreater:
+      EmitByte(Opcode::kGreater);
+      break;
+    case TokenType::kGreaterEqual:
+      EmitByte(Opcode::kGreaterEqual);
+      break;
+    case TokenType::kLess:
+      EmitByte(Opcode::kLess);
+      break;
+    case TokenType::kLessEqual:
+      EmitByte(Opcode::kLessEqual);
+      break;
     case TokenType::kPlus:
       EmitByte(Opcode::kAdd);
       break;
@@ -77,6 +95,20 @@ Chunk *Compiler::GetCurrentChunk() { return compiling_chunk_; }
 
 constexpr ParseRule Compiler::GetParseRule(TokenType type) {
   switch (type) {
+    case TokenType::kBang:
+      return {&Compiler::Unary, nullptr, Precedence::kNone};
+    case TokenType::kBangEqual:
+    case TokenType::kEqualEqual:
+      return {nullptr, &Compiler::Binary, Precedence::kEquality};
+    case TokenType::kGreater:
+    case TokenType::kGreaterEqual:
+    case TokenType::kLess:
+    case TokenType::kLessEqual:
+      return {nullptr, &Compiler::Binary, Precedence::kComparison};
+    case TokenType::kFalse:
+    case TokenType::kTrue:
+    case TokenType::kNil:
+      return {&Compiler::Literal, nullptr, Precedence::kNone};
     case TokenType::kLeftParen:
       return {&Compiler::Grouping, nullptr, Precedence::kNone};
     case TokenType::kMinus:
@@ -101,6 +133,22 @@ void Compiler::Grouping() {
 void Compiler::Number() {
   auto value = std::stod(parser_.get_previous().lexeme.data());
   GetCurrentChunk()->WriteConstant(value, parser_.get_previous().line);
+}
+
+void Compiler::Literal() {
+  switch (parser_.get_previous().type) {
+    case TokenType::kFalse:
+      EmitByte(Opcode::kFalse);
+      break;
+    case TokenType::kTrue:
+      EmitByte(Opcode::kTrue);
+      break;
+    case TokenType::kNil:
+      EmitByte(Opcode::kNil);
+      break;
+    default:
+      return;
+  }
 }
 
 void Compiler::ParsePrecedence(Precedence precedence) {
@@ -136,8 +184,12 @@ void Compiler::Unary() {
   ParsePrecedence(Precedence::kUnary);
 
   switch (operator_type) {
+    case TokenType::kBang:
+      EmitByte(Opcode::kNot);
+      break;
     case TokenType::kMinus:
       EmitByte(Opcode::kNegate);
+      break;
     default:
       return;
   }

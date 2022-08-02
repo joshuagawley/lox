@@ -3,10 +3,6 @@
 #ifndef LOX_SRC_COMPILER_H
 #define LOX_SRC_COMPILER_H
 
-#include <functional>
-#include <optional>
-#include <string_view>
-
 #include "chunk.h"
 #include "parser.h"
 #include "scanner.h"
@@ -17,7 +13,7 @@ class Compiler;
 
 using ParseFunc = void (Compiler::*)();
 
-enum class Precedence {
+enum class Precedence : std::uint8_t {
   kNone,
   kAssignment,
   kOr,
@@ -28,7 +24,7 @@ enum class Precedence {
   kFactor,
   kUnary,
   kCall,
-  kPrimary
+  kPrimary,
 };
 
 struct ParseRule {
@@ -54,6 +50,7 @@ class Compiler {
   static constexpr ParseRule GetParseRule(TokenType type);
   void Grouping();
   void Number();
+  void Literal();
   void ParsePrecedence(Precedence precedence);
   void StopCompiling();
   void Unary();

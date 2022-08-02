@@ -10,7 +10,7 @@
 namespace lox {
 
 Scanner::Scanner(std::string_view source)
-    : start_{&source[0]}, current_{&source[0]} {}
+    : start_{source.data()}, current_{source.data()} {}
 
 Token Scanner::ScanToken() {
   SkipWhitespace();
@@ -62,16 +62,16 @@ Token Scanner::ScanToken() {
   return MakeErrorToken("Unexpected character.");
 }
 
-bool Scanner::IsAtEnd() { return *current_ == '\0'; }
+bool Scanner::IsAtEnd() const { return *current_ == '\0'; }
 
 char Scanner::Advance() {
   current_++;
   return current_[-1];
 }
 
-char Scanner::Peek() { return *current_; }
+char Scanner::Peek() const { return *current_; }
 
-char Scanner::PeekNext() {
+char Scanner::PeekNext() const {
   if (IsAtEnd()) return '\0';
   return current_[1];
 }
@@ -83,7 +83,7 @@ bool Scanner::Match(const char expected) {
   return true;
 }
 
-Token Scanner::MakeToken(TokenType type) {
+Token Scanner::MakeToken(TokenType type) const {
   return {type, start_, static_cast<std::size_t>(current_ - start_), line_};
 }
 
@@ -111,7 +111,7 @@ void Scanner::SkipWhitespace() {
 }
 
 TokenType Scanner::CheckKeyword(std::size_t start, std::size_t length,
-                                const char *rest, TokenType type) {
+                                const char *rest, TokenType type) const {
   if (static_cast<std::size_t>(current_ - start_) == start + length &&
       std::memcmp(start_ + start, rest, length) == 0) {
     return type;
@@ -119,7 +119,7 @@ TokenType Scanner::CheckKeyword(std::size_t start, std::size_t length,
   return TokenType::kIdentifier;
 }
 
-TokenType Scanner::FindIdentifierType() {
+TokenType Scanner::FindIdentifierType() const {
   switch (start_[0]) {
     case 'a':
       return CheckKeyword(1, 2, "nd", TokenType::kAnd);
@@ -178,11 +178,11 @@ Token Scanner::HandleNumber() {
   while (std::isdigit(Peek())) Advance();
 
   // Look for a fractional part
-  if (Peek() == '.' && std::isdigit(PeekNext())) {
+  if (Peek() == '.' && (std::isdigit(PeekNext()) != 0)) {
     // Consume the "."
     Advance();
 
-    while (std::isdigit(Peek())) Advance();
+    while (std::isdigit(Peek()) != 0) Advance();
   }
 
   return MakeToken(TokenType::kNumber);
