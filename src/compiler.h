@@ -53,6 +53,7 @@ class Compiler {
   void Literal();
   void ParsePrecedence(Precedence precedence);
   void StopCompiling();
+  void String();
   void Unary();
 
   Chunk *compiling_chunk_ = nullptr;

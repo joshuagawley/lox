@@ -5,8 +5,6 @@
 #include <cstring>
 #include <locale>
 
-#define CHECK_FOR_CHAR_OR_END(c) (Peek() == c || IsAtEnd())
-
 namespace lox {
 
 Scanner::Scanner(std::string_view source)
@@ -102,7 +100,7 @@ void Scanner::SkipWhitespace() {
         break;
       case '/':
         if (PeekNext() == '/') {
-          while (!CHECK_FOR_CHAR_OR_END('\n')) Advance();
+          while (Peek() != '\n' && !IsAtEnd()) Advance();
         }
       default:
         return;
@@ -189,7 +187,7 @@ Token Scanner::HandleNumber() {
 }
 
 Token Scanner::HandleString() {
-  while (!CHECK_FOR_CHAR_OR_END('"')) {
+  while (Peek() != '"' && !IsAtEnd()) {
     if (Peek() == '\n') line_++;
     Advance();
   }

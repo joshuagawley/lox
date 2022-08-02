@@ -31,11 +31,13 @@ struct OstreamVisitor {
   void operator()(const bool value) const {
     os << std::boolalpha << value << std::noboolalpha;
   }
+
+  void operator()(std::string_view str) const { os << str; }
 };
 
 }  // namespace internal
 
-using Value = std::variant<std::monostate, double, bool>;
+using Value = std::variant<std::monostate, double, bool, std::string>;
 
 inline std::ostream &operator<<(std::ostream &os, const Value &value) {
   std::visit(internal::OstreamVisitor{os}, value);
