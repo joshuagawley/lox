@@ -3,6 +3,7 @@
 #include "vm.h"
 
 #include <array>
+#include <cstdarg>
 #include <iostream>
 
 namespace lox {
