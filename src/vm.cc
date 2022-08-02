@@ -3,9 +3,18 @@
 #include "vm.h"
 
 #include <array>
+#include <cstdarg>
 #include <iostream>
 
 namespace lox {
+
+template <typename... Ts>
+struct Overloaded : Ts... {
+  using Ts::operator()...;
+};
+
+template <typename... Ts>
+Overloaded(Ts...) -> Overloaded<Ts...>;
 
 template <typename Operator>
 bool VirtualMachine::BinaryOp(const std::uint8_t *ip, Operator op) {
@@ -21,7 +30,7 @@ bool VirtualMachine::BinaryOp(const std::uint8_t *ip, Operator op) {
   return true;
 }
 
-void VirtualMachine::PushValue(Value value) { stack_.push_back(value); }
+void VirtualMachine::PushValue(const Value &value) { stack_.push_back(value); }
 
 Value VirtualMachine::PopValue() {
   Value result = *(stack_.end() - 1);
@@ -113,9 +122,30 @@ InterpretResult VirtualMachine::Run() {
       case Opcode::kLessEqual:
         BINARY_OP(<=);
         break;
-      case Opcode::kAdd:
-        BINARY_OP(+);
+      case Opcode::kAdd: {
+        bool success = std::visit(
+            Overloaded{
+                [this](double b, double a) -> bool {
+                  PopValue();
+                  PopValue();
+                  PushValue(a + b);
+                  return true;
+                },
+                [this](const std::string &b, const std::string &a) -> bool {
+                  PopValue();
+                  PopValue();
+                  PushValue(a + b);
+                  return true;
+                },
+                [this, ip](auto, auto) -> bool {
+                  this->RuntimeError(
+                      ip, "Operands must be two numbers or two strings.");
+                  return false;
+                }},
+            Peek(0), Peek(1));
+        if (!success) return InterpretResult::kRuntimeError;
         break;
+      }
       case Opcode::kSubtract:
         BINARY_OP(-);
         break;
@@ -144,14 +174,12 @@ InterpretResult VirtualMachine::Run() {
 #undef BINARY_OP
 }
 
-template <typename Arg, typename... Args>
-void VirtualMachine::RuntimeError(const std::uint8_t *ip, Arg &&arg,
-                                  Args &&...args) {
-  // From
-  // https://stackoverflow.com/questions/27375089/what-is-the-easiest-way-to-print-a-variadic-parameter-pack-using-stdostream
-  std::cerr << std::forward<Arg>(arg);
-  (std::cerr << ... << std::forward<Args>(args));
-  std::cerr << "\n";
+void VirtualMachine::RuntimeError(const std::uint8_t *ip,
+                                  const char *format...) {
+  va_list args;
+  va_start(args, format);
+  std::vfprintf(stderr, format, args);
+  va_end(args);
 
   auto instruction = static_cast<std::size_t>(ip - chunk_->GetCodePtr() - 1);
   std::size_t line = chunk_->GetLineAtIndex(instruction);
@@ -159,6 +187,19 @@ void VirtualMachine::RuntimeError(const std::uint8_t *ip, Arg &&arg,
   stack_.clear();
 }
 
+/*
+template <typename Arg, typename... Args>
+void VirtualMachine::RuntimeError(const std::uint8_t *ip, Arg &&arg,
+                                  Args &&...args) {
+  // From
+  //
+https://stackoverflow.com/questions/27375089/what-is-the-easiest-way-to-print-a-variadic-parameter-pack-using-stdostream
+  std::cerr << std::forward<Arg>(arg);
+  (std::cerr << ... << std::forward<Args>(args));
+
+
+}
+*/
 InterpretResult VirtualMachine::Interpret(std::string_view source) {
   auto compiler = Compiler{source};
   auto chunk = Chunk{};

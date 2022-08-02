@@ -118,6 +118,8 @@ constexpr ParseRule Compiler::GetParseRule(TokenType type) {
     case TokenType::kSlash:
     case TokenType::kStar:
       return {nullptr, &Compiler::Binary, Precedence::kFactor};
+    case TokenType::kString:
+      return {&Compiler::String, nullptr, Precedence::kNone};
     case TokenType::kNumber:
       return {&Compiler::Number, nullptr, Precedence::kNone};
     default:
@@ -175,6 +177,13 @@ void Compiler::StopCompiling() {
     GetCurrentChunk()->Disassemble("code");
   }
 #endif
+}
+
+void Compiler::String() {
+  GetCurrentChunk()->WriteConstant(
+      std::string{parser_.get_previous().lexeme.begin() + 1,
+                  parser_.get_previous().lexeme.end() - 1},
+      parser_.get_previous().line);
 }
 
 void Compiler::Unary() {

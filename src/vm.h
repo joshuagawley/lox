@@ -19,7 +19,7 @@ class VirtualMachine {
   VirtualMachine() = default;
 
   InterpretResult Interpret(std::string_view source);
-  void PushValue(Value value);
+  void PushValue(const Value &value);
   Value PopValue();
 
  private:
@@ -28,9 +28,11 @@ class VirtualMachine {
 
   Value &Peek(long distance);
   InterpretResult Run();
-
+  /*
   template <typename Arg, typename... Args>
   void RuntimeError(const std::uint8_t *ip, Arg &&arg, Args &&...args);
+  */
+  void RuntimeError(const std::uint8_t *ip, const char *format...);
 
   Chunk *chunk_ = nullptr;
   std::vector<Value> stack_;
