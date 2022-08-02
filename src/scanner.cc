@@ -9,19 +9,16 @@
 
 namespace lox {
 
-auto Scanner::operator()(std::string_view source) noexcept -> void {
-  start_ = &source[0];
-  current_ = &source[0];
-  line_ = 1;
-}
+Scanner::Scanner(std::string_view source)
+    : start_{source.data()}, current_{source.data()} {}
 
-auto Scanner::ScanToken() -> Token {
+Token Scanner::ScanToken() {
   SkipWhitespace();
   start_ = current_;
 
   if (IsAtEnd()) return MakeToken(TokenType::kEof);
 
-  auto c = Advance();
+  char c = Advance();
 
   if (std::isalpha(c)) return HandleIdentifier();
   if (std::isdigit(c)) return HandleNumber();
@@ -65,39 +62,38 @@ auto Scanner::ScanToken() -> Token {
   return MakeErrorToken("Unexpected character.");
 }
 
-auto Scanner::IsAtEnd() -> bool { return *current_ == '\0'; }
+bool Scanner::IsAtEnd() const { return *current_ == '\0'; }
 
-auto Scanner::Advance() -> char {
+char Scanner::Advance() {
   current_++;
   return current_[-1];
 }
 
-auto Scanner::Peek() -> char { return *current_; }
+char Scanner::Peek() const { return *current_; }
 
-auto Scanner::PeekNext() -> char {
+char Scanner::PeekNext() const {
   if (IsAtEnd()) return '\0';
   return current_[1];
 }
 
-auto Scanner::Match(const char expected) -> bool {
+bool Scanner::Match(const char expected) {
   if (IsAtEnd()) return false;
   if (*current_ != expected) return false;
   current_++;
   return true;
 }
 
-auto Scanner::MakeToken(TokenType type) -> Token {
-  return Token{type, start_, static_cast<std::size_t>(current_ - start_),
-               line_};
+Token Scanner::MakeToken(TokenType type) const {
+  return {type, start_, static_cast<std::size_t>(current_ - start_), line_};
 }
 
-auto Scanner::MakeErrorToken(std::string_view message) const -> Token {
-  return Token{TokenType::kError, message, line_};
+Token Scanner::MakeErrorToken(std::string_view message) const {
+  return {TokenType::kError, message, line_};
 }
 
-auto Scanner::SkipWhitespace() -> void {
+void Scanner::SkipWhitespace() {
   while (true) {
-    auto c = Peek();
+    char c = Peek();
     switch (c) {
       case ' ':
       case '\r':
@@ -114,16 +110,16 @@ auto Scanner::SkipWhitespace() -> void {
   }
 }
 
-auto Scanner::CheckKeyword(std::size_t start, std::size_t length,
-                           const char *rest, TokenType type) -> TokenType {
-  if (current_ - start_ == start + length &&
+TokenType Scanner::CheckKeyword(std::size_t start, std::size_t length,
+                                const char *rest, TokenType type) const {
+  if (static_cast<std::size_t>(current_ - start_) == start + length &&
       std::memcmp(start_ + start, rest, length) == 0) {
     return type;
   }
   return TokenType::kIdentifier;
 }
 
-auto Scanner::FindIdentifierType() -> TokenType {
+TokenType Scanner::FindIdentifierType() const {
   switch (start_[0]) {
     case 'a':
       return CheckKeyword(1, 2, "nd", TokenType::kAnd);
@@ -135,7 +131,7 @@ auto Scanner::FindIdentifierType() -> TokenType {
       if (current_ - start_ > 1) {
         switch (start_[1]) {
           case 'a':
-            return CheckKeyword(2, 3, "lse", TokenType::kElse);
+            return CheckKeyword(2, 3, "lse", TokenType::kFalse);
           case 'o':
             return CheckKeyword(2, 1, "r", TokenType::kFor);
           case 'u':
@@ -173,26 +169,26 @@ auto Scanner::FindIdentifierType() -> TokenType {
   return TokenType::kIdentifier;
 }
 
-auto Scanner::HandleIdentifier() -> Token {
+Token Scanner::HandleIdentifier() {
   while (std::isalnum(Peek())) Advance();
   return MakeToken(FindIdentifierType());
 }
 
-auto Scanner::HandleNumber() -> Token {
+Token Scanner::HandleNumber() {
   while (std::isdigit(Peek())) Advance();
 
   // Look for a fractional part
-  if (Peek() == '.' && std::isdigit(PeekNext())) {
+  if (Peek() == '.' && (std::isdigit(PeekNext()) != 0)) {
     // Consume the "."
     Advance();
 
-    while (std::isdigit(Peek())) Advance();
+    while (std::isdigit(Peek()) != 0) Advance();
   }
 
   return MakeToken(TokenType::kNumber);
 }
 
-auto Scanner::HandleString() -> Token {
+Token Scanner::HandleString() {
   while (!CHECK_FOR_CHAR_OR_END('"')) {
     if (Peek() == '\n') line_++;
     Advance();

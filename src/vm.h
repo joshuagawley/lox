@@ -17,19 +17,23 @@ enum class InterpretResult { kOk, kCompileError, kRuntimeError };
 class VirtualMachine {
  public:
   VirtualMachine() = default;
-  ~VirtualMachine() = default;
 
-  auto Interpret(std::string_view source) -> InterpretResult;
-  auto PushValue(Value value);
-  auto PopValue() -> Value;
+  InterpretResult Interpret(std::string_view source);
+  void PushValue(Value value);
+  Value PopValue();
 
  private:
-  auto Run() -> InterpretResult;
+  template <typename Operator>
+  bool BinaryOp(const std::uint8_t *ip, Operator op);
+
+  Value &Peek(long distance);
+  InterpretResult Run();
+
+  template <typename Arg, typename... Args>
+  void RuntimeError(const std::uint8_t *ip, Arg &&arg, Args &&...args);
 
   Chunk *chunk_ = nullptr;
-  std::uint8_t *ip_ = nullptr;
-  std::vector<Value> temps_;
-  Compiler compiler_;
+  std::vector<Value> stack_;
 };
 
 }  // namespace lox

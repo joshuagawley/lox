@@ -7,50 +7,112 @@
 
 namespace lox {
 
-auto VirtualMachine::PushValue(Value value) { temps_.push_back(value); }
+template <typename Operator>
+bool VirtualMachine::BinaryOp(const std::uint8_t *ip, Operator op) {
+  if (!(std::holds_alternative<double>(Peek(0)) &&
+        std::holds_alternative<double>(Peek(1)))) {
+    RuntimeError(ip, "Operands must be numbers.");
+    return false;
+  }
 
-auto VirtualMachine::PopValue() -> Value {
-  auto result = *(temps_.end() - 1);
-  temps_.pop_back();
+  auto b = std::get<double>(PopValue());
+  auto a = std::get<double>(PopValue());
+  PushValue(op(a, b));
+  return true;
+}
+
+void VirtualMachine::PushValue(Value value) { stack_.push_back(value); }
+
+Value VirtualMachine::PopValue() {
+  Value result = *(stack_.end() - 1);
+  stack_.pop_back();
   return result;
 }
 
-auto VirtualMachine::Run() -> InterpretResult {
-#define READ_BYTE() (*ip_++)
-#define READ_CONSTANT() (chunk_->GetValueAtIndex(READ_BYTE()))
-#define BINARY_OP(op)      \
-  do {                     \
-    double b = PopValue(); \
-    double a = PopValue(); \
-    PushValue(a op b);     \
+Value &VirtualMachine::Peek(long distance) {
+  return *(stack_.end() - distance - 1);
+}
+
+InterpretResult VirtualMachine::Run() {
+#define BINARY_OP(op)                                                        \
+  do {                                                                       \
+    if (!BinaryOp(ip, [](double a, double b) -> Value { return a op b; })) { \
+      return InterpretResult::kRuntimeError;                                 \
+    }                                                                        \
   } while (false)
+
+  const std::uint8_t *ip = chunk_->GetCodePtr();
+
+  auto read_byte = [&ip]() -> std::uint8_t { return *ip++; };
+
+  auto read_constant = [this, read_byte]() -> Value {
+    return this->chunk_->GetValueAtIndex(read_byte());
+  };
+
+  auto last_element = [this]() -> const Value & {
+    return *(this->stack_.end() - 1);
+  };
 
   while (true) {
 #if DEBUG_TRACE_EXECUTION
     std::cout << "          ";
-    for (auto slot : temps_) {
+    for (auto &slot : stack_) {
       std::cout << "[ " << slot << " ]";
     }
     std::cout << '\n';
-    chunk_->DisassembleInstruction(ip_ - chunk_->GetCodePtr());
+    chunk_->DisassembleInstruction(
+        static_cast<std::size_t>(ip - chunk_->GetCodePtr()));
 #endif
-    auto instruction = static_cast<Opcode>(*ip_++);
+    auto instruction = static_cast<Opcode>(read_byte());
     switch (instruction) {
       case Opcode::kConstant: {
-        auto constant = READ_CONSTANT();
+        Value constant = read_constant();
         PushValue(constant);
         break;
       }
       case Opcode::kConstantLong: {
         auto constant_bytes = std::array<std::uint8_t, 3>{};
         for (auto i = std::size_t{0}; i < constant_bytes.size(); ++i) {
-          constant_bytes[i] = READ_BYTE();
+          constant_bytes[i] = read_byte();
         }
         auto constant = (constant_bytes[0] << 16) | (constant_bytes[1] << 8) |
                         constant_bytes[2];
-        PushValue(constant);
+        PushValue(static_cast<double>(constant));
         break;
       }
+      case Opcode::kNil:
+        PushValue(std::monostate{});
+        break;
+      case Opcode::kTrue:
+        PushValue(true);
+        break;
+      case Opcode::kFalse:
+        PushValue(false);
+        break;
+      case Opcode::kEqual: {
+        auto b = PopValue();
+        auto a = PopValue();
+        PushValue(a == b);
+        break;
+      }
+      case Opcode::kNotEqual: {
+        auto b = PopValue();
+        auto a = PopValue();
+        PushValue(a != b);
+        break;
+      }
+      case Opcode::kGreater:
+        BINARY_OP(>);
+        break;
+      case Opcode::kGreaterEqual:
+        BINARY_OP(>=);
+        break;
+      case Opcode::kLess:
+        BINARY_OP(<);
+        break;
+      case Opcode::kLessEqual:
+        BINARY_OP(<=);
+        break;
       case Opcode::kAdd:
         BINARY_OP(+);
         break;
@@ -63,8 +125,15 @@ auto VirtualMachine::Run() -> InterpretResult {
       case Opcode::kDivide:
         BINARY_OP(/);
         break;
+      case Opcode::kNot:
+        stack_[stack_.size() - 1] = IsFalsey(last_element());
+        break;
       case Opcode::kNegate: {
-        temps_[temps_.size() - 1] = -temps_[temps_.size() - 1];
+        if (!std::holds_alternative<double>(Peek(0))) {
+          RuntimeError(ip, "Operand must be a number");
+          return InterpretResult::kRuntimeError;
+        }
+        stack_[stack_.size() - 1] = -std::get<double>(last_element());
         break;
       }
       case Opcode::kReturn:
@@ -72,18 +141,33 @@ auto VirtualMachine::Run() -> InterpretResult {
         return InterpretResult::kOk;
     }
   }
-#undef READ_BYTE
-#undef READ_CONSTANT
+#undef BINARY_OP
 }
-auto VirtualMachine::Interpret(std::string_view source) -> InterpretResult {
+
+template <typename Arg, typename... Args>
+void VirtualMachine::RuntimeError(const std::uint8_t *ip, Arg &&arg,
+                                  Args &&...args) {
+  // From
+  // https://stackoverflow.com/questions/27375089/what-is-the-easiest-way-to-print-a-variadic-parameter-pack-using-stdostream
+  std::cerr << std::forward<Arg>(arg);
+  (std::cerr << ... << std::forward<Args>(args));
+  std::cerr << "\n";
+
+  auto instruction = static_cast<std::size_t>(ip - chunk_->GetCodePtr() - 1);
+  std::size_t line = chunk_->GetLineAtIndex(instruction);
+  std::cerr << "[line " << line << "] in script\n";
+  stack_.clear();
+}
+
+InterpretResult VirtualMachine::Interpret(std::string_view source) {
+  auto compiler = Compiler{source};
   auto chunk = Chunk{};
 
-  if (!compiler_.Compile(source, &chunk)) return InterpretResult::kCompileError;
+  if (!compiler.Compile(&chunk)) return InterpretResult::kCompileError;
 
   chunk_ = &chunk;
-  ip_ = chunk_->GetCodePtr();
 
-  auto result = Run();
+  InterpretResult result = Run();
   chunk_ = nullptr;
   return result;
 }

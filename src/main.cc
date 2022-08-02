@@ -1,49 +1,53 @@
 // SPDX-License-Identifier: Apache-2.0
 
+#include <sysexits.h>
+
 #include <fstream>
 #include <iostream>
+#include <string>
 
-#include "chunk.h"
 #include "vm.h"
 
 namespace lox {
 
 // From
 // https://stackoverflow.com/questions/116038/how-do-i-read-an-entire-file-into-a-stdstring-in-c
-auto ReadFile(std::string_view path) -> std::string {
+std::string ReadFile(std::string_view path) {
   constexpr auto read_size = std::size_t{4096};
   auto stream = std::ifstream{path.data()};
   stream.exceptions(std::ios::badbit);
 
   auto result = std::string{};
   auto buffer = std::string(read_size, '\0');
-  while (stream.read(&buffer[0], read_size)) {
-    result.append(buffer, 0, stream.gcount());
+  while (stream.read(buffer.data(), read_size)) {
+    result.append(buffer, 0, static_cast<std::size_t>(stream.gcount()));
   }
-  result.append(buffer, 0, stream.gcount());
+  result.append(buffer, 0, static_cast<std::size_t>(stream.gcount()));
   return result;
 }
 
-auto Repl() -> void {
-  auto vm = lox::VirtualMachine{};
+void Repl() {
+  auto vm = VirtualMachine{};
   auto line = std::string{};
 
   while (std::cout << "> " && std::getline(std::cin, line)) {
     vm.Interpret(line);
+    std::cout << '\n';
   }
-  std::cout << '\n';
 }
 
-auto RunFile(std::string_view path) -> void {
+int RunFile(std::string_view path) {
   auto vm = VirtualMachine{};
-  auto source = ReadFile(path);
-  auto result = vm.Interpret(source);
+  std::string source = ReadFile(path);
+  InterpretResult result = vm.Interpret(source);
 
-  if (result == InterpretResult::kCompileError) {
-    std::exit(65);
-  }
-  if (result == InterpretResult::kRuntimeError) {
-    std::exit(70);
+  switch (result) {
+    case InterpretResult::kOk:
+      return EXIT_SUCCESS;
+    case InterpretResult::kCompileError:
+      return EX_DATAERR;
+    case InterpretResult::kRuntimeError:
+      return EX_SOFTWARE;
   }
 }
 
@@ -53,10 +57,10 @@ int main(int argc, const char *argv[]) {
   if (argc == 1) {
     lox::Repl();
   } else if (argc == 2) {
-    lox::RunFile(argv[1]);
+    return lox::RunFile(argv[1]);
   } else {
     std::cerr << "Usage: lox [path]\n";
-    std::exit(64);
+    return EX_USAGE;
   }
 
   return EXIT_SUCCESS;

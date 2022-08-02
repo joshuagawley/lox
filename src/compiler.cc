@@ -2,9 +2,9 @@
 
 #include "compiler.h"
 
-#define DEBUG_PRINT_CODE true
-
 #include <iostream>
+
+#define DEBUG_PRINT_CODE
 
 namespace {
 
@@ -15,34 +15,41 @@ constexpr auto kNoParseRule =
 
 namespace lox {
 
-auto Compiler::Compile(std::string_view source, Chunk *chunk) -> bool {
-  scanner_(source);
-  current_ = scanner_.ScanToken();
+Compiler::Compiler(std::string_view source) : parser_(source) {}
+
+bool Compiler::Compile(Chunk *chunk) {
   compiling_chunk_ = chunk;
   Expression();
-  Consume(TokenType::kEof, "Expected end of expression");
+  parser_.Consume(TokenType::kEof, "Expected end of expression");
   StopCompiling();
-  return !had_error_;
+  return !parser_.had_error();
 }
 
-auto Compiler::Advance() -> void {
-  previous_ = current_.value();
-
-  while (true) {
-    current_ = scanner_.ScanToken();
-    if (current_.value().type != TokenType::kError) break;
-
-    ErrorAtCurrent(current_.value().lexeme);
-  }
-}
-
-auto Compiler::Binary() -> void {
-  auto operator_type = previous_.value().type;
+void Compiler::Binary() {
+  auto operator_type = parser_.get_previous().type;
   auto rule = GetParseRule(operator_type);
   ParsePrecedence(
       static_cast<Precedence>(static_cast<int>(rule.precedence) + 1));
 
   switch (operator_type) {
+    case TokenType::kBangEqual:
+      EmitByte(Opcode::kNotEqual);
+      break;
+    case TokenType::kEqualEqual:
+      EmitByte(Opcode::kEqual);
+      break;
+    case TokenType::kGreater:
+      EmitByte(Opcode::kGreater);
+      break;
+    case TokenType::kGreaterEqual:
+      EmitByte(Opcode::kGreaterEqual);
+      break;
+    case TokenType::kLess:
+      EmitByte(Opcode::kLess);
+      break;
+    case TokenType::kLessEqual:
+      EmitByte(Opcode::kLessEqual);
+      break;
     case TokenType::kPlus:
       EmitByte(Opcode::kAdd);
       break;
@@ -60,69 +67,48 @@ auto Compiler::Binary() -> void {
   }
 }
 
-auto Compiler::Consume(TokenType type, std::string_view message) -> void {
-  if (current_.value().type == type) {
-    Advance();
-    return;
-  }
-
-  ErrorAtCurrent(message);
+void Compiler::EmitByte(std::uint8_t byte) {
+  GetCurrentChunk()->Write(byte, parser_.get_previous().line);
 }
 
-auto Compiler::EmitByte(std::uint8_t byte) -> void {
-  GetCurrentChunk()->Write(byte, previous_.value().line);
+void Compiler::EmitByte(Opcode code) {
+  GetCurrentChunk()->Write(code, parser_.get_previous().line);
 }
 
-auto Compiler::EmitByte(Opcode code) -> void {
-  GetCurrentChunk()->Write(code, previous_.value().line);
-}
-
-auto Compiler::EmitBytes(std::initializer_list<std::uint8_t> bytes) -> void {
+void Compiler::EmitBytes(std::initializer_list<std::uint8_t> bytes) {
   for (auto byte : bytes) {
     EmitByte(byte);
   }
 }
 
-auto Compiler::EmitBytes(std::initializer_list<Opcode> codes) -> void {
+void Compiler::EmitBytes(std::initializer_list<Opcode> codes) {
   for (auto code : codes) {
     EmitByte(code);
   }
 }
 
-auto Compiler::EmitReturn() -> void { EmitByte(Opcode::kReturn); }
+void Compiler::EmitReturn() { EmitByte(Opcode::kReturn); }
 
-auto Compiler::ErrorAt(const Token &token, std::string_view message) -> void {
-  if (panic_mode_) return;
-  panic_mode_ = true;
-  std::cerr << "[line " << token.line << " Error";
+void Compiler::Expression() { ParsePrecedence(Precedence::kAssignment); }
 
-  if (token.type == lox::TokenType::kEof) {
-    std::cerr << " at end";
-  } else if (token.type == lox::TokenType::kError) {
-  } else {
-    std::cerr << " at '" << token.lexeme << "'";
-  }
+Chunk *Compiler::GetCurrentChunk() { return compiling_chunk_; }
 
-  std::cerr << ": " << message << '\n';
-  had_error_ = true;
-}
-
-auto Compiler::Error(std::string_view message) -> void {
-  ErrorAt(previous_.value(), message);
-}
-
-auto Compiler::ErrorAtCurrent(std::string_view message) -> void {
-  ErrorAt(current_.value(), message);
-}
-
-auto Compiler::Expression() -> void {
-  ParsePrecedence(Precedence::kAssignment);
-}
-
-auto Compiler::GetCurrentChunk() -> Chunk * { return compiling_chunk_; }
-
-constexpr auto Compiler::GetParseRule(TokenType type) -> ParseRule {
+constexpr ParseRule Compiler::GetParseRule(TokenType type) {
   switch (type) {
+    case TokenType::kBang:
+      return {&Compiler::Unary, nullptr, Precedence::kNone};
+    case TokenType::kBangEqual:
+    case TokenType::kEqualEqual:
+      return {nullptr, &Compiler::Binary, Precedence::kEquality};
+    case TokenType::kGreater:
+    case TokenType::kGreaterEqual:
+    case TokenType::kLess:
+    case TokenType::kLessEqual:
+      return {nullptr, &Compiler::Binary, Precedence::kComparison};
+    case TokenType::kFalse:
+    case TokenType::kTrue:
+    case TokenType::kNil:
+      return {&Compiler::Literal, nullptr, Precedence::kNone};
     case TokenType::kLeftParen:
       return {&Compiler::Grouping, nullptr, Precedence::kNone};
     case TokenType::kMinus:
@@ -139,51 +125,71 @@ constexpr auto Compiler::GetParseRule(TokenType type) -> ParseRule {
   }
 }
 
-auto Compiler::Grouping() -> void {
+void Compiler::Grouping() {
   Expression();
-  Consume(TokenType::kRightParen, "Expected ')' after expression");
+  parser_.Consume(TokenType::kRightParen, "Expected ')' after expression");
 }
 
-auto Compiler::Number() -> void {
-  auto value = std::stod(previous_.value().lexeme.data());
-  GetCurrentChunk()->WriteConstant(value, previous_.value().line);
+void Compiler::Number() {
+  auto value = std::stod(parser_.get_previous().lexeme.data());
+  GetCurrentChunk()->WriteConstant(value, parser_.get_previous().line);
 }
 
-auto Compiler::ParsePrecedence(Precedence precedence) -> void {
-  Advance();
-  auto prefixRule = GetParseRule(previous_.value().type).prefix_func;
+void Compiler::Literal() {
+  switch (parser_.get_previous().type) {
+    case TokenType::kFalse:
+      EmitByte(Opcode::kFalse);
+      break;
+    case TokenType::kTrue:
+      EmitByte(Opcode::kTrue);
+      break;
+    case TokenType::kNil:
+      EmitByte(Opcode::kNil);
+      break;
+    default:
+      return;
+  }
+}
+
+void Compiler::ParsePrecedence(Precedence precedence) {
+  parser_.Advance();
+  auto prefixRule = GetParseRule(parser_.get_previous().type).prefix_func;
   if (prefixRule == nullptr) {
-    Error("Expected expression.");
+    parser_.ErrorAtPrevious("Expected expression.");
     return;
   }
 
   (this->*prefixRule)();
 
-  while (precedence <= GetParseRule(current_.value().type).precedence) {
-    Advance();
-    auto infix_rule = GetParseRule(previous_.value().type).infix_func;
+  while (precedence <= GetParseRule(parser_.get_current().type).precedence) {
+    parser_.Advance();
+    auto infix_rule = GetParseRule(parser_.get_previous().type).infix_func;
     (this->*infix_rule)();
   }
 }
 
-auto Compiler::StopCompiling() -> void {
+void Compiler::StopCompiling() {
   EmitReturn();
 #ifdef DEBUG_PRINT_CODE
-  if (!had_error_) {
+  if (!parser_.had_error()) {
     GetCurrentChunk()->Disassemble("code");
   }
 #endif
 }
 
-auto Compiler::Unary() -> void {
-  auto operator_type = previous_.value().type;
+void Compiler::Unary() {
+  auto operator_type = parser_.get_previous().type;
 
   // Compile the operand
   ParsePrecedence(Precedence::kUnary);
 
   switch (operator_type) {
+    case TokenType::kBang:
+      EmitByte(Opcode::kNot);
+      break;
     case TokenType::kMinus:
       EmitByte(Opcode::kNegate);
+      break;
     default:
       return;
   }

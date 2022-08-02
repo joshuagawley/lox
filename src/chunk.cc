@@ -6,8 +6,7 @@
 
 namespace {
 
-auto SimpleInstruction(std::string_view name, std::size_t offset)
-    -> std::size_t {
+std::size_t SimpleInstruction(std::string_view name, std::size_t offset) {
   std::cout << name << '\n';
   return offset + 1;
 }
@@ -21,17 +20,17 @@ std::ostream &operator<<(std::ostream &os, Opcode opcode) {
   return os;
 }
 
-auto Chunk::Write(std::uint8_t code, std::size_t line) noexcept -> void {
+void Chunk::Write(std::uint8_t code, std::size_t line) noexcept {
   code_.push_back(code);
   lines_.push_back(line);
 }
 
-auto Chunk::Write(Opcode code, std::size_t line) noexcept -> void {
+void Chunk::Write(Opcode code, std::size_t line) noexcept {
   code_.push_back(static_cast<std::uint8_t>(code));
   lines_.push_back(line);
 }
 
-auto Chunk::Disassemble(std::string_view name) noexcept -> void {
+void Chunk::Disassemble(std::string_view name) noexcept {
   std::cout << "== " << name << " ==\n";
 
   auto offset = std::size_t{0};
@@ -40,12 +39,12 @@ auto Chunk::Disassemble(std::string_view name) noexcept -> void {
   }
 }
 
-auto Chunk::WriteConstant(Value value, std::size_t line) noexcept -> void {
+void Chunk::WriteConstant(Value value, std::size_t line) noexcept {
   constants_.push_back(value);
-  auto index = constants_.size() - 1;
+  std::size_t index = constants_.size() - 1;
   if (index < 255) {
     Write(Opcode::kConstant, line);
-    Write(constants_.size() - 1, line);
+    Write(static_cast<uint8_t>(constants_.size() - 1), line);
   } else {
     Write(Opcode::kConstantLong, line);
     Write((index & 0x00ff0000) >> 16, line);
@@ -54,31 +53,30 @@ auto Chunk::WriteConstant(Value value, std::size_t line) noexcept -> void {
   }
 }
 
-auto Chunk::GetCodePtr() -> std::uint8_t * { return &code_[0]; }
+const std::uint8_t *Chunk::GetCodePtr() const noexcept { return code_.data(); }
 
-auto Chunk::GetValueAtIndex(std::size_t index) -> Value {
-  return constants_[index];
-}
+std::size_t Chunk::GetLineAtIndex(std::size_t index) { return lines_[index]; }
 
-auto Chunk::ConstantInstruction(std::string_view name,
-                                std::size_t offset) noexcept -> std::size_t {
-  auto constant = code_[offset + 1];
+Value Chunk::GetValueAtIndex(std::size_t index) { return constants_[index]; }
+
+std::size_t Chunk::ConstantInstruction(std::string_view name,
+                                       std::size_t offset) noexcept {
+  std::uint8_t constant = code_[offset + 1];
   std::printf("%-16s %4d '", name.data(), constant);
   std::cout << constants_[constant] << "'\n";
   return offset + 2;
 }
 
-auto Chunk::ConstantLongInstruction(std::string_view name,
-                                    std::size_t offset) noexcept
-    -> std::size_t {
+std::size_t Chunk::ConstantLongInstruction(std::string_view name,
+                                           std::size_t offset) noexcept {
   auto constant =
       (code_[offset + 1] << 16) | (code_[offset + 2] << 8) | code_[offset + 3];
   std::printf("%-16s %4d '", name.data(), constant);
-  std::cout << constants_[constant] << "'\n";
+  std::cout << constants_[static_cast<std::size_t>(constant)] << "'\n";
   return offset + 4;
 }
 
-auto Chunk::DisassembleInstruction(std::size_t offset) noexcept -> std::size_t {
+std::size_t Chunk::DisassembleInstruction(std::size_t offset) noexcept {
   std::printf("%04lu ", offset);
 
   if (offset > 0 && lines_[offset] == lines_[offset - 1]) {
@@ -93,6 +91,24 @@ auto Chunk::DisassembleInstruction(std::size_t offset) noexcept -> std::size_t {
       return ConstantInstruction("OP_CONSTANT", offset);
     case Opcode::kConstantLong:
       return ConstantLongInstruction("OP_CONSTANT_LONG", offset);
+    case Opcode::kNil:
+      return SimpleInstruction("OP_NIL", offset);
+    case Opcode::kTrue:
+      return SimpleInstruction("OP_TRUE", offset);
+    case Opcode::kFalse:
+      return SimpleInstruction("OP_FALSE", offset);
+    case Opcode::kEqual:
+      return SimpleInstruction("OP_EQUAL", offset);
+    case Opcode::kNotEqual:
+      return SimpleInstruction("OP_NOT_EQUAL", offset);
+    case Opcode::kGreater:
+      return SimpleInstruction("OP_GREATER", offset);
+    case Opcode::kGreaterEqual:
+      return SimpleInstruction("OP_GREATER_EQUAL", offset);
+    case Opcode::kLess:
+      return SimpleInstruction("OP_LESS", offset);
+    case Opcode::kLessEqual:
+      return SimpleInstruction("OP_LESS_EQUAL", offset);
     case Opcode::kAdd:
       return SimpleInstruction("OP_ADD", offset);
     case Opcode::kSubtract:
@@ -101,6 +117,8 @@ auto Chunk::DisassembleInstruction(std::size_t offset) noexcept -> std::size_t {
       return SimpleInstruction("OP_MULTIPLY", offset);
     case Opcode::kDivide:
       return SimpleInstruction("OP_DIVIDE", offset);
+    case Opcode::kNot:
+      return SimpleInstruction("OP_NOT", offset);
     case Opcode::kNegate:
       return SimpleInstruction("OP_NEGATE", offset);
     case Opcode::kReturn:

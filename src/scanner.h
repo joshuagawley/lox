@@ -3,33 +3,31 @@
 #ifndef LOX_SRC_SCANNER_H
 #define LOX_SRC_SCANNER_H
 
-#include <string_view>
-
 #include "token.h"
 
 namespace lox {
 
 class Scanner {
  public:
-  auto operator()(std::string_view source) noexcept -> void;
+  explicit Scanner(std::string_view source);
 
-  auto Advance() -> char;
-  auto ScanToken() -> Token;
+  char Advance();
+  Token ScanToken();
 
  private:
-  auto IsAtEnd() -> bool;
-  auto Peek() -> char;
-  auto PeekNext() -> char;
-  auto Match(char expected) -> bool;
-  auto MakeToken(TokenType type) -> Token;
-  [[nodiscard]] auto MakeErrorToken(std::string_view message) const -> Token;
-  auto SkipWhitespace() -> void;
-  auto CheckKeyword(std::size_t start, std::size_t length, const char *rest,
-                    TokenType type) -> TokenType;
-  auto FindIdentifierType() -> TokenType;
-  auto HandleIdentifier() -> Token;
-  auto HandleNumber() -> Token;
-  auto HandleString() -> Token;
+  [[nodiscard]] bool IsAtEnd() const;
+  [[nodiscard]] char Peek() const;
+  [[nodiscard]] char PeekNext() const;
+  bool Match(char expected);
+  [[nodiscard]] Token MakeToken(TokenType type) const;
+  [[nodiscard]] Token MakeErrorToken(std::string_view message) const;
+  void SkipWhitespace();
+  TokenType CheckKeyword(std::size_t start, std::size_t length,
+                         const char *rest, TokenType type) const;
+  TokenType FindIdentifierType() const;
+  Token HandleIdentifier();
+  Token HandleNumber();
+  Token HandleString();
 
   const char *start_ = nullptr;
   const char *current_ = nullptr;
